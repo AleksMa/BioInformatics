@@ -5,38 +5,38 @@ import "fmt"
 const GapSymbol = '-'
 
 type NeedlemanWunsch struct {
-	FirstSequence  *Sequence
-	SecondSequence *Sequence
-	Table          Matrix
-	SF             ScoringFunc
-	GapValue       int
+	TopSequence  *Sequence
+	LeftSequence *Sequence
+	Table        Matrix
+	SF           ScoringFunc
+	GapValue     int
 }
 
 func NewNeedlemanWunsch(first, second *Sequence, sf ScoringFunc, GapValue int) *NeedlemanWunsch {
 	nw := &NeedlemanWunsch{
-		FirstSequence:  first,
-		SecondSequence: second,
-		Table:          make(Matrix, len(second.Value)+1),
-		SF:             sf,
-		GapValue:       GapValue,
+		TopSequence:  second,
+		LeftSequence: first,
+		Table:        make(Matrix, len(first.Value)+1),
+		SF:           sf,
+		GapValue:     GapValue,
 	}
 	// Аллоцируем первую строку
-	nw.Table[0] = make(Line, len(first.Value)+1)
+	nw.Table[0] = make(Line, len(second.Value)+1)
 	// Обнуляем (0, 0)
 	nw.Table[0][0] = &Cell{
 		Distance: 0,
 		Dir:      NullDirection,
 	}
 	// Обнуляем первую строку
-	for i := range first.Value {
+	for i := range second.Value {
 		nw.Table[0][i+1] = &Cell{
 			Distance: GapValue * (i + 1),
 			Dir:      LeftDirection,
 		}
 	}
 	// Аллоцируем оставшиеся строки, зануляем первый столбец
-	for i := range second.Value {
-		nw.Table[i+1] = make(Line, len(first.Value)+1)
+	for i := range first.Value {
+		nw.Table[i+1] = make(Line, len(second.Value)+1)
 		nw.Table[i+1][0] = &Cell{
 			Distance: GapValue * (i + 1),
 			Dir:      TopDirection,
@@ -46,8 +46,8 @@ func NewNeedlemanWunsch(first, second *Sequence, sf ScoringFunc, GapValue int) *
 }
 
 func (nw *NeedlemanWunsch) Print() {
-	for i := 0; i <= len(nw.SecondSequence.Value); i++ {
-		for j := 0; j <= len(nw.FirstSequence.Value); j++ {
+	for i := 0; i <= len(nw.LeftSequence.Value); i++ {
+		for j := 0; j <= len(nw.TopSequence.Value); j++ {
 			fmt.Print(nw.Table[i][j].Distance, ", ", nw.Table[i][j].Dir)
 			fmt.Print("   | ")
 		}
@@ -55,33 +55,34 @@ func (nw *NeedlemanWunsch) Print() {
 	}
 }
 
-func (nw *NeedlemanWunsch) Solve() (string, string) {
-	nw.determine(len(nw.SecondSequence.Value), len(nw.FirstSequence.Value))
+func (nw *NeedlemanWunsch) Solve() (string, string, int) {
+	nw.determine(len(nw.LeftSequence.Value), len(nw.TopSequence.Value))
 
-	cell := nw.Table[len(nw.SecondSequence.Value)][len(nw.FirstSequence.Value)]
+	cell := nw.Table[len(nw.LeftSequence.Value)][len(nw.TopSequence.Value)]
 
-	firstRes, secondRes := "", ""
-	fp, sp := len(nw.FirstSequence.Value)-1, len(nw.SecondSequence.Value)-1
+	score := cell.Distance
+	secondRes, firstRes := "", ""
+	sp, fp := len(nw.LeftSequence.Value)-1, len(nw.TopSequence.Value)-1
 
 	for cell.Dir != NullDirection {
 		if cell.Dir == DiagonalDirection {
-			firstRes = string(rune(nw.FirstSequence.Value[fp])) + firstRes
-			secondRes = string(rune(nw.SecondSequence.Value[sp])) + secondRes
-			fp--
+			secondRes = string(rune(nw.LeftSequence.Value[sp])) + secondRes
+			firstRes = string(rune(nw.TopSequence.Value[fp])) + firstRes
 			sp--
+			fp--
 		} else if cell.Dir == LeftDirection {
-			firstRes = string(rune(nw.FirstSequence.Value[fp])) + firstRes
-			secondRes = "-" + secondRes
-			fp--
-		} else if cell.Dir == TopDirection {
+			secondRes = string(rune(nw.LeftSequence.Value[sp])) + secondRes
 			firstRes = "-" + firstRes
-			secondRes = string(rune(nw.SecondSequence.Value[sp])) + secondRes
 			sp--
+		} else if cell.Dir == TopDirection {
+			secondRes = "-" + secondRes
+			firstRes = string(rune(nw.TopSequence.Value[fp])) + firstRes
+			fp--
 		}
-		cell = nw.Table[sp+1][fp+1]
+		cell = nw.Table[fp+1][sp+1]
 	}
 
-	return firstRes, secondRes
+	return secondRes, firstRes, score
 }
 
 func (nw *NeedlemanWunsch) determine(i, j int) {
@@ -103,7 +104,7 @@ func (nw *NeedlemanWunsch) determine(i, j int) {
 	}
 
 	maxVal, maxNum := max3(
-		nw.Table[i-1][j-1].Distance+nw.SF[nw.SecondSequence.Value[i-1]][nw.FirstSequence.Value[j-1]],
+		nw.Table[i-1][j-1].Distance+nw.SF[nw.LeftSequence.Value[i-1]][nw.TopSequence.Value[j-1]],
 		nw.Table[i][j-1].Distance+nw.GapValue,
 		nw.Table[i-1][j].Distance+nw.GapValue,
 	)

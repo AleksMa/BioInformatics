@@ -1,58 +1,92 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"io"
+	"log"
+	"os"
 )
 
 var (
-	dataFile   string
-	dataFile2   string
+	inputFiles []string
+	gap        int
+	outputFile string
 )
 
 func init() {
-	flag.StringVar(&dataFile, "i", "", "Name of input file")
+	flag.IntVar(&gap, "gap", -2, "gap value")
+	flag.StringVar(&outputFile, "out", "", "output file")
 }
 
 func main() {
-	//flag.Parse()
-	//
-	//f, err := os.Open(dataFile)
-	//if err != nil {
-	//	log.Fatalf("can not open file: %s", err)
-	//}
-	//defer f.Close()
-	//
-	//seqs := make([]*Sequence, 0, 70)
-	//
-	//p := NewFastaParser(f)
-	//for {
-	//	seq, err := p.Next()
-	//	if err != nil {
-	//		if err == io.EOF {
-	//			break
-	//		}
-	//		log.Fatalf("processing error: %s", err)
-	//	}
-	//	seqs = append(seqs, seq)
-	//}
-	//
-	//if len(seqs) != 2 {
-	//	log.Fatal("unexpected sequence number")
-	//}
+	flag.Parse()
 
-	s1, s2 := &Sequence{"AATCG"}, &Sequence{"AACG"}
+	inputFiles = flag.Args()
 
-	nw := NewNeedlemanWunsch(s1, s2, SimpleFunc, -2)
+	if len(inputFiles) == 0 {
+		return
+	}
 
-	a, b := nw.Solve()
-	fmt.Println(a)
-	fmt.Println(b)
+	seqs := make([]*Sequence, 0, 2)
+	for _, inputFile := range inputFiles {
+		f, err := os.Open(inputFile)
+		if err != nil {
+			log.Fatalf("can not open file: %s", err)
+		}
+		defer f.Close()
+
+		p := NewFastaParser(f)
+		for {
+			seq, err := p.Next()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				log.Fatalf("processing error: %s", err)
+			}
+			seqs = append(seqs, seq)
+		}
+	}
+
+	if len(seqs) != 2 {
+		log.Fatal("unexpected sequences number")
+	}
+
+	nw := NewNeedlemanWunsch(seqs[0], seqs[1], DNAFull, gap)
+
+	a, b, score := nw.Solve()
+
+	if outputFile == "" {
+		for i := 0; ; i += 100 {
+			if i + 100 > len(a) {
+				fmt.Println(a[i:])
+				break
+			}
+			fmt.Println(a[i:i+100])
+		}
+		for i := 0; i <= len(b); i += 100 {
+			if i + 100 > len(b) {
+				fmt.Println(b[i:])
+				break
+			}
+			fmt.Println(b[i:i+100])
+		}
+		fmt.Println("Score:", score)
+	} else {
+		f, _ := os.Create(outputFile)
+		w := bufio.NewWriter(f)
+
+		fmt.Fprintln(w, a)
+		fmt.Fprintln(w, b)
+		fmt.Fprintln(w, score)
+
+		w.Flush()
+	}
 
 	nw.Print()
 }
-
-
 
 /*
 
@@ -114,5 +148,4 @@ Score: 161
 для ДНК: https://www.ebi.ac.uk/Tools/psa/emboss_needle/nucleotide.html
 В настройках  step2-More Options... выбрать BLOSUM62 для белков, DNAFull для ДНК, установить равными GAP OPEN, GAP EXTEND, END GAP OPEN и END GAP EXTEND. END GAP PENALTY=True.
 
- */
-
+*/

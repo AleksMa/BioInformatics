@@ -2,10 +2,9 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // Possible parse errors
@@ -34,7 +33,7 @@ func (p *FastaParser) Next() (*Sequence, error) {
 		return nil, err
 	}
 
-	err = p.parseHeader(header)
+	id, descr, err := p.parseHeader(header)
 	if err != nil {
 		return nil, err
 	}
@@ -69,20 +68,21 @@ func (p *FastaParser) Next() (*Sequence, error) {
 	}
 
 	return &Sequence{
+		ID:          id,
+		Description: descr,
 		Value:       valueBuilder.String(),
 	}, nil
 }
 
-func (p *FastaParser) parseHeader(h string) (error) {
+func (p *FastaParser) parseHeader(h string) (string, string, error) {
 	if len(h) == 0 || h[0] != '>' {
-		return ErrBadHeader
+		return "", "", ErrBadHeader
 	}
 
 	info := strings.Split(h[1:], "|")
 	if len(info) != 3 {
-		return ErrBadHeader
+		return "", "", ErrBadHeader
 	}
 
-	return nil
-	//return strings.TrimSpace(info[1]), strings.TrimSpace(info[2]), nil
+	return strings.TrimSpace(info[1]), strings.TrimSpace(info[2]), nil
 }

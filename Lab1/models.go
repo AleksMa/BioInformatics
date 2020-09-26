@@ -2,7 +2,9 @@ package main
 
 // Sequence represents description of amino acid or DNA
 type Sequence struct {
-	Value string
+	ID          string
+	Description string
+	Value       string
 }
 
 type Letter rune

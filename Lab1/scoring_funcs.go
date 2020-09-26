@@ -23,7 +23,7 @@ var DNAFull = ScoringFunc{
 		'A': -4,
 		'T': -4,
 		'G': -4,
-		'C': -5,
+		'C': 5,
 	},
 }
 
